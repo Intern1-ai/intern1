@@ -1,0 +1,11 @@
+[
+  {
+    "name": "calculator",
+    "repo": "https://github.com/alexiscirmi/react-calculator",
+    "port": 3000,
+    "start": "npm run dev",
+    "ai_branch_name": "main",
+    "git_token": "",
+    "iframe": true
+  }
+]

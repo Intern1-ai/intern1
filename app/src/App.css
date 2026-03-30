@@ -1,0 +1,905 @@
+/* =====================================================================
+   App.css — intern1 dashboard styles
+   Design tokens:
+     bg-base:    #111111
+     bg-raised:  #1c1c1c
+     bg-card:    #1e1e1e
+     bg-subtle:  #171717
+     bg-deep:    #0a0a0a
+     border:     #2e2e2e
+     accent:     #b0b0b0
+     text:       #e0e0e0
+     text-muted: #aaa
+     text-dim:   #555
+     text-faint: #333
+     green:      #50c050
+     amber:      #f0a050
+     red:        #e05555
+   ===================================================================== */
+
+/* ── Keyframes ─────────────────────────────────────────────────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-6px); }
+  80%       { transform: translateX(6px); }
+}
+
+/* ── LoginPage ─────────────────────────────────────────────────────── */
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  background: #111111;
+}
+
+.login-card {
+  background: #1e1e1e;
+  border: 1px solid #2e2e2e;
+  border-radius: 12px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.login-card--shake {
+  animation: shake 0.4s ease;
+}
+
+.login-card__header {
+  text-align: center;
+}
+
+.login-card__logo {
+  width: 120px;
+  margin-bottom: 16px;
+}
+
+.login-card__subtitle {
+  color: #555;
+  font-size: 19px;
+}
+
+.login-card__fields {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-card__input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #111111;
+  border: 1px solid #2e2e2e;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 26px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.login-card__input--error {
+  border-color: #e05555;
+}
+
+.login-card__error {
+  color: #e05555;
+  font-size: 19px;
+  text-align: center;
+}
+
+.login-card__submit {
+  width: 100%;
+  padding: 12px;
+  background: #b0b0b0;
+  border: none;
+  border-radius: 8px;
+  color: #111111;
+  font-size: 26px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.login-card__submit:hover {
+  opacity: 0.85;
+}
+
+/* ── WeakPasswordBanner ────────────────────────────────────────────── */
+.weak-password-banner {
+  background: #4a1a1a;
+  color: #f0a0a0;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── TunnelBanner ──────────────────────────────────────────────────── */
+.tunnel-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #1c1c1c;
+  color: #e0e0e0;
+  padding: 6px 16px;
+  font-size: 19px;
+  flex-shrink: 0;
+}
+
+.tunnel-banner__link {
+  color: #b0b0b0;
+}
+
+.tunnel-banner__copy-btn {
+  background: #2e2e2e;
+  border: 1px solid #444;
+  color: #e0e0e0;
+  border-radius: 4px;
+  padding: 2px 10px;
+  cursor: pointer;
+  font-size: 26px;
+}
+
+.tunnel-banner__dismiss-btn {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 19px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+/* ── DesktopDivider ────────────────────────────────────────────────── */
+.divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  flex-shrink: 0;
+  background: #1c1c1c;
+  gap: 4px;
+  cursor: col-resize;
+  z-index: 10;
+  user-select: none;
+}
+
+.divider__logo {
+  width: 22px;
+  opacity: 0.6;
+  margin-bottom: 6px;
+}
+
+.divider__sep {
+  width: 18px;
+  border-top: 1px solid #2e2e2e;
+  margin: 2px 0;
+}
+
+.divider__btn {
+  background: #2e2e2e;
+  border: none;
+  color: #e0e0e0;
+  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.divider__btn--active {
+  background: #b0b0b0;
+  color: #1c1c1c;
+}
+
+/* ── MobileTabBar ──────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  flex-shrink: 0;
+  background: #1c1c1c;
+  border-bottom: 1px solid #333;
+  padding-top: env(safe-area-inset-top);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  align-items: center;
+}
+
+.tab-bar__logo {
+  width: 28px;
+  margin: 0 8px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.tab-bar__btn {
+  flex: 1;
+  padding: 10px 0;
+  background: #2e2e2e;
+  color: #e0e0e0;
+  border: none;
+  font-size: 15px;
+  font-weight: normal;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-bar__btn--active {
+  background: #b0b0b0;
+  color: #1c1c1c;
+  font-weight: bold;
+}
+
+/* ── ProjectBar ────────────────────────────────────────────────────── */
+.project-bar {
+  background: #171717;
+  border-bottom: 1px solid #2e2e2e;
+  padding: 3px 12px;
+  font-size: 26px;
+  color: #666;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-bar__name {
+  color: #aaa;
+  font-weight: 500;
+}
+
+.project-bar__branch {
+  color: #b0b0b0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.project-bar__tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #555;
+  font-size: 17px;
+  font-family: inherit;
+  padding: 2px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.project-bar__tab:hover {
+  color: #aaa;
+}
+
+.project-bar__tab--active {
+  color: #e0e0e0;
+  border-bottom-color: #b0b0b0;
+}
+
+/* ── AppPlaceholder ────────────────────────────────────────────────── */
+.app-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111111;
+  color: #333;
+  font-size: 19px;
+}
+
+/* ── AppLoadingPanel ───────────────────────────────────────────────── */
+.app-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #111111;
+  color: #888;
+  gap: 16px;
+}
+
+.app-loading__icon {
+  font-size: 38px;
+}
+
+.app-loading__title {
+  font-size: 26px;
+  color: #aaa;
+}
+
+.app-loading__subtitle {
+  font-size: 26px;
+  color: #555;
+}
+
+/* ── OnboardingPage ────────────────────────────────────────────────── */
+.onboarding-page {
+  position: fixed;
+  inset: 0;
+  background: #111111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.onboarding-page__inner {
+  width: 100%;
+  max-width: 780px;
+  padding: 32px 24px;
+}
+
+.onboarding-page__header {
+  margin-bottom: 28px;
+}
+
+.onboarding-page__logo {
+  width: 140px;
+  margin: 0 auto 20px;
+  display: block;
+}
+
+.onboarding-page__title {
+  color: #e0e0e0;
+  font-size: 26px;
+  margin: 0 0 8px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.onboarding-page__subtitle {
+  color: #555;
+  font-size: 19px;
+  margin: 0;
+  text-align: center;
+}
+
+/* Tunnel card */
+.tunnel-card {
+  background: #171717;
+  border: 1px solid #2e2e2e;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.tunnel-card__options {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.tunnel-card__option-wrap {
+  position: relative;
+}
+
+.tunnel-card__option {
+  background: #0a0a0a;
+  border: 1px solid #2e2e2e;
+  border-radius: 4px;
+  padding: 12px 10px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.tunnel-card__option--active {
+  border-color: #b0b0b0;
+  background: #1a1a1a;
+}
+
+.tunnel-card__option-label {
+  color: #e0e0e0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.tunnel-card__option-desc {
+  color: #555;
+  font-size: 15px;
+}
+
+.tunnel-card__tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #252525;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #ccc;
+  font-size: 13px;
+  line-height: 1.5;
+  width: 260px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.tunnel-card__tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #3a3a3a;
+}
+
+.tunnel-card__option-wrap:hover .tunnel-card__tooltip {
+  opacity: 1;
+}
+
+.tunnel-card__fields {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+/* Project card */
+.project-card {
+  background: #171717;
+  border: 1px solid #2e2e2e;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.project-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.project-card__label {
+  color: #b0b0b0;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.project-card__remove-btn {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-size: 26px;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.project-card__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.project-card__field {
+  /* default: single column slot */
+}
+
+.project-card__field--full {
+  grid-column: 1 / -1;
+}
+
+.project-card__field--checkbox {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Form controls shared in onboarding */
+.form-label {
+  display: block;
+  color: #e0e0e0;
+  font-size: 17px;
+  margin-bottom: 4px;
+  letter-spacing: 0.4px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 7px 10px;
+  background: #0a0a0a;
+  border: 1px solid #2e2e2e;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 19px;
+  box-sizing: border-box;
+}
+
+.git-check-msg {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.git-check-msg__icon {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.git-check-msg--checking {
+  color: #888;
+  background: #1a1a1a;
+}
+
+.git-check-msg--ok {
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.git-check-msg--fail {
+  color: #e05555;
+  background: rgba(224, 85, 85, 0.1);
+}
+
+.form-input--textarea {
+  height: 100px;
+  resize: vertical;
+  font-family: monospace;
+}
+
+.form-checkbox {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+
+.form-label--checkbox {
+  cursor: pointer;
+  margin: 0;
+}
+
+.onboarding-page__add-btn {
+  width: 100%;
+  padding: 9px;
+  background: transparent;
+  border: 1px dashed #2e2e2e;
+  border-radius: 4px;
+  color: #555;
+  cursor: pointer;
+  font-size: 19px;
+  margin-bottom: 20px;
+}
+
+.onboarding-page__error {
+  color: #e05555;
+  font-size: 26px;
+  margin-bottom: 14px;
+}
+
+.onboarding-page__submit {
+  width: 100%;
+  padding: 11px;
+  background: #b0b0b0;
+  border: none;
+  border-radius: 4px;
+  color: #111111;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.onboarding-page__submit--submitting {
+  background: #2e2e2e;
+  color: #555;
+  cursor: default;
+}
+
+/* ── ProjectsPanel ─────────────────────────────────────────────────── */
+.projects-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #111111;
+  color: #e0e0e0;
+  font-size: 17px;
+}
+
+.projects-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid #2e2e2e;
+  flex-shrink: 0;
+  background: #111111;
+}
+
+.projects-panel__title {
+  color: #aaa;
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: 0.5px;
+}
+
+.projects-panel__status--online {
+  color: #50c050;
+  font-size: 26px;
+}
+
+.projects-panel__status--starting {
+  color: #f0a050;
+  font-size: 26px;
+}
+
+.projects-panel__empty {
+  padding: 24px 14px;
+  color: #444;
+}
+
+.projects-panel__list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-row {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-row--bordered {
+  border-bottom: 1px solid #2e2e2e;
+}
+
+.project-row__status-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px 6px;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.project-row__status-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  cursor: default;
+}
+
+.project-row__status-main--clickable {
+  cursor: pointer;
+}
+
+.project-row__status-main--clickable:hover {
+  opacity: 0.8;
+}
+
+.project-row__clear-btn {
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #888;
+  cursor: pointer;
+  font-size: 17px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.project-row__clear-btn:hover {
+  color: #e0e0e0;
+  border-color: #888;
+  background: #2e2e2e;
+}
+
+.project-row__dot {
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.project-row__dot--online {
+  color: #50c050;
+}
+
+.project-row__dot--offline {
+  color: #555;
+}
+
+.project-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.project-row__name {
+  color: #e0e0e0;
+  font-weight: 600;
+  font-size: 26px;
+}
+
+.project-row__online-label {
+  color: #50c050;
+  font-size: 19px;
+}
+
+.project-row__starting-label {
+  color: #f0a050;
+  font-size: 19px;
+}
+
+.project-row__branch {
+  color: #b0b0b0;
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.project-row__port {
+  color: #555;
+  font-size: 19px;
+}
+
+.project-row__click-hint {
+  color: #b0b0b0;
+  font-size: 19px;
+}
+
+.project-row__logs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 14px 10px 28px;
+  background: #0a0a0a;
+}
+
+.project-row__log-empty {
+  color: #333;
+}
+
+.project-row__log-line {
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 26px;
+}
+
+
+/* ── Main App layout ───────────────────────────────────────────────── */
+.app-root {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0;
+}
+
+.app-root--mobile {
+  overflow: hidden;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.app-right-pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-iframe {
+  border: none;
+  height: 100%;
+}
+
+.app-right-iframe {
+  flex: 1;
+  border: none;
+  display: block;
+}
+
+/* Full-coverage drag overlay */
+.app-drag-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: col-resize;
+  z-index: 20;
+}
+
+/* Mobile panel container */
+.mobile-panel-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.mobile-panel--absolute {
+  position: absolute;
+  inset: 0;
+}
+
+.mobile-right-pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Mobile overrides ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .project-row__log-line {
+    font-size: 13px;
+  }
+
+  .git-project__name {
+    font-size: 17px;
+  }
+
+  .git-project__file-name {
+    font-size: 15px;
+  }
+
+  .git-project__commit-input {
+    font-size: 16px;
+  }
+
+  .git-project__commit-btn,
+  .git-project__discard-btn {
+    font-size: 16px;
+    padding: 8px 10px;
+  }
+
+  .git-project__output {
+    font-size: 13px;
+  }
+}

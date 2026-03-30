@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "playwright-mcp",
+      "args": ["--no-sandbox"],
+      "env": {
+        "DISPLAY": ""
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+.env
+node_modules/
+app/node_modules/
+app/dist/
+config/projects.json
+config/envs/*
+!config/envs/app.env
+!config/envs/.gitkeep
+!config/envs/*.example
+
+.claude/settings.local.json

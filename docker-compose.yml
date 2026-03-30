@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    container_name: intern1
+    ports:
+      - "3500:3500" # allow you to access intern1 app from localhost
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - APP_PASSWORD=${APP_PASSWORD:-changeme}
+      - CLOUDFLARE_TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
+      - TUNNEL_URL=${TUNNEL_URL:-}
+      - USE_QUICK_TUNNEL=${USE_QUICK_TUNNEL:-}
+    cap_add:
+      - SYS_ADMIN
+    volumes:
+      - ./config:/config
+      - ${SSH_KEY_PATH:-/dev/null}:/home/node/.ssh/id_rsa:ro
