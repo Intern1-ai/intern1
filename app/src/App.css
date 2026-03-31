@@ -902,4 +902,29 @@
   .git-project__output {
     font-size: 13px;
   }
+
+  /* Onboarding page */
+  .onboarding-page__inner {
+    padding: 20px 14px;
+  }
+
+  .tunnel-card__options {
+    grid-template-columns: 1fr;
+  }
+
+  .tunnel-card__tooltip {
+    display: none;
+  }
+
+  .project-card__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tunnel-card {
+    padding: 14px;
+  }
+
+  .project-card {
+    padding: 14px;
+  }
 }
