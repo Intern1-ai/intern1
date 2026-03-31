@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { GoGitBranch } from 'react-icons/go'
-import { FiFileText, FiMonitor } from 'react-icons/fi'
+import { FiFileText, FiMonitor, FiSettings } from 'react-icons/fi'
 import './App.css'
 
 function LoginPage({ onLogin }) {
@@ -89,7 +89,7 @@ function TunnelBanner({ url, onDismiss }) {
 }
 
 // Desktop: draggable divider with snap buttons
-function DesktopDivider({ splitPct, onSnap, onDragStart, logsMode, onLogsToggle, shellMode, onShellToggle, onShowApp, appActive }) {
+function DesktopDivider({ splitPct, onSnap, onDragStart, logsMode, onLogsToggle, shellMode, onShellToggle, onShowApp, appActive, onSettings }) {
   const btn = (onClick, label, title, active) => (
     <button
       key={title}
@@ -116,6 +116,8 @@ function DesktopDivider({ splitPct, onSnap, onDragStart, logsMode, onLogsToggle,
         btn(onShowApp,     <FiMonitor />,   'App',   appActive ),
         btn(onLogsToggle,  <FiFileText />,  'Logs',  logsMode  ),
         btn(onShellToggle, '>_',            'Shell', shellMode ),
+        <div key="sep2" className="divider__sep" />,
+        btn(onSettings,    <FiSettings />,  'Settings', false ),
       ]}
     </div>
   )
@@ -140,6 +142,7 @@ function MobileTabBar({ active, onChange }) {
       {btn('right', 'App'   )}
       {btn('logs',  'Logs'  )}
       {btn('shell', 'Shell' )}
+      {btn('settings', <FiSettings style={{ verticalAlign: 'middle' }} />)}
     </div>
   )
 }
@@ -171,14 +174,30 @@ function ProjectBar({ rightUrl, projects, onSwitch }) {
   )
 }
 
-function OnboardingPage({ onComplete }) {
+function OnboardingPage({ onComplete, onCancel, initialData }) {
   const emptyProject = () => ({ name: '', repo: '', port: '3001', start: 'npm run dev', git_token: '', ai_branch_name: '', env_content: '', iframe: true })
+  const toFormProject = (p) => ({
+    name: p.name || '',
+    repo: p.repo || '',
+    port: String(p.port || 3001),
+    start: p.start || 'npm run dev',
+    git_token: p.git_token || '',
+    ai_branch_name: p.ai_branch_name || '',
+    env_content: p.env_content || '',
+    iframe: p.iframe !== undefined ? p.iframe : true,
+    _nameEdited: true,
+    _originalRepo: p.repo || '',
+  })
   const [apiKey, setApiKey] = useState('')
   const [apiKeySet, setApiKeySet] = useState(null) // null=checking, true=already set, false=needs input
   const [apiKeyStatus, setApiKeyStatus] = useState(null) // { status: 'checking'|'ok'|'fail', message }
   const apiKeyTimer = useRef(null)
-  const [projects, setProjects] = useState([emptyProject()])
-  const [tunnelMode, setTunnelMode] = useState('none')
+  const [projects, setProjects] = useState(
+    initialData?.projects?.length ? initialData.projects.map(toFormProject) : [emptyProject()]
+  )
+  const [tunnelMode, setTunnelMode] = useState(initialData?.tunnelMode || 'none')
+  const isSettings = !!onCancel
+  const hadTunnelToken = isSettings && !!(initialData?.tunnelToken)
   const [tunnelToken, setTunnelToken] = useState('')
   const [tunnelStatus, setTunnelStatus] = useState(null) // { status: 'checking'|'ok'|'fail', message: string }
   const tunnelTimer = useRef(null)
@@ -193,6 +212,14 @@ function OnboardingPage({ onComplete }) {
       .then(d => setApiKeySet(d.set))
       .catch(() => setApiKeySet(false))
   }, [])
+
+  // Validate pre-populated projects on mount (settings mode)
+  useEffect(() => {
+    if (!initialData?.projects?.length) return
+    initialData.projects.forEach((p, i) => {
+      if (p.repo) checkGit(i, p.repo, p.git_token || '')
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkApiKey = useCallback((key) => {
     if (apiKeyTimer.current) clearTimeout(apiKeyTimer.current)
@@ -271,10 +298,14 @@ function OnboardingPage({ onComplete }) {
     const updated = projects.map((p, j) => {
       if (j !== i) return p
       const next = { ...p, [field]: value }
-      // Auto-populate name from repo URL if name hasn't been manually edited
-      if (field === 'repo' && !p._nameEdited) {
-        const match = value.trim().match(/\/([^\/]+?)(?:\.git)?$/)
-        next.name = match ? match[1] : p.name
+      // When repo URL changes from its original value, auto-update the name
+      if (field === 'repo') {
+        const repoChanged = p._originalRepo && value.trim() !== p._originalRepo
+        if (!p._nameEdited || repoChanged) {
+          const match = value.trim().match(/\/([^\/]+?)(?:\.git)?$/)
+          next.name = match ? match[1] : p.name
+          if (repoChanged) next._nameEdited = false
+        }
       }
       if (field === 'name') next._nameEdited = true
       return next
@@ -298,7 +329,7 @@ function OnboardingPage({ onComplete }) {
         return
       }
     }
-    if (tunnelMode === 'named' && !tunnelToken.trim()) {
+    if (tunnelMode === 'named' && !tunnelToken.trim() && !hadTunnelToken) {
       setError('Tunnel token is required for named tunnels.')
       return
     }
@@ -316,13 +347,14 @@ function OnboardingPage({ onComplete }) {
       }))
       const tunnel = { mode: tunnelMode }
       if (tunnelMode === 'named') {
-        tunnel.token = tunnelToken.trim()
+        tunnel.token = tunnelToken.trim() || undefined
+        tunnel.keepExisting = !tunnelToken.trim() && hadTunnelToken
       }
       const res = await fetch('/api/auth/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ projects: payload, tunnel, ...(apiKeySet === false && apiKey.trim() ? { apiKey: apiKey.trim() } : {}) }),
+        body: JSON.stringify({ projects: payload, tunnel, ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) }),
       })
       const data = await res.json()
       if (data.success) {
@@ -342,18 +374,24 @@ function OnboardingPage({ onComplete }) {
       <div className="onboarding-page__inner">
         <div className="onboarding-page__header">
           <img src="/images/intern1_logo_dark.png" alt="intern1" className="onboarding-page__logo" />
-          <h1 className="onboarding-page__title">Welcome to Intern1</h1>
-          <p className="onboarding-page__subtitle">Configure your first project to get started.</p>
+          <h1 className="onboarding-page__title">{initialData ? 'Settings' : 'Welcome to Intern1'}</h1>
+          <p className="onboarding-page__subtitle">{initialData ? 'Update your configuration and save.' : 'Configure your first project to get started.'}</p>
         </div>
 
-        {apiKeySet === false && (
+        {(apiKeySet === false || isSettings) ? (
           <div className="tunnel-card">
-            <span className="project-card__label">ANTHROPIC API KEY</span>
+            <span className="project-card__label">ANTHROPIC API KEY {isSettings && apiKeySet ? '' : '*'}</span>
             <div className="tunnel-card__fields" style={{ marginTop: 14 }}>
               <div className="project-card__field project-card__field--full">
-                <input className="form-input" type="password" placeholder="sk-ant-..."
+                <input className="form-input" type="password" placeholder={isSettings && apiKeySet ? '(unchanged — enter new key to replace)' : 'sk-ant-...'}
                   value={apiKey} onChange={e => { setApiKey(e.target.value); checkApiKey(e.target.value) }} />
               </div>
+              {!apiKey && isSettings && apiKeySet && !apiKeyStatus && (
+                <div className="git-check-msg git-check-msg--ok">
+                  <span className="git-check-msg__icon">&#10003;</span>
+                  <span>API key is configured (leave blank to keep current key)</span>
+                </div>
+              )}
               {apiKeyStatus && (
                 <div className={`git-check-msg git-check-msg--${apiKeyStatus.status}`}>
                   {apiKeyStatus.status === 'checking' && <span className="git-check-msg__icon">&#8987;</span>}
@@ -364,13 +402,12 @@ function OnboardingPage({ onComplete }) {
               )}
             </div>
           </div>
-        )}
-        {apiKeySet === true && (
+        ) : apiKeySet === true ? (
           <div className="git-check-msg git-check-msg--ok" style={{ marginBottom: 16 }}>
             <span className="git-check-msg__icon">&#10003;</span>
             <span>Anthropic API key is configured</span>
           </div>
-        )}
+        ) : null}
 
         <div className="tunnel-card">
           <span className="project-card__label">TUNNEL</span>
@@ -399,10 +436,16 @@ function OnboardingPage({ onComplete }) {
           {tunnelMode === 'named' && (
             <div className="tunnel-card__fields">
               <div className="project-card__field project-card__field--full">
-                <label className="form-label">CLOUDFLARE TUNNEL TOKEN *</label>
-                <input className="form-input" type="password" placeholder="eyJh…"
+                <label className="form-label">CLOUDFLARE TUNNEL TOKEN {hadTunnelToken ? '' : '*'}</label>
+                <input className="form-input" type="password" placeholder={hadTunnelToken ? '(unchanged — enter new token to replace)' : 'eyJh…'}
                   value={tunnelToken} onChange={e => { setTunnelToken(e.target.value); checkTunnel(e.target.value) }} />
               </div>
+              {!tunnelToken && hadTunnelToken && !tunnelStatus && (
+                <div className="git-check-msg git-check-msg--ok">
+                  <span className="git-check-msg__icon">&#10003;</span>
+                  <span>Tunnel token is configured (leave blank to keep current token)</span>
+                </div>
+              )}
               {tunnelStatus && (
                 <div className={`git-check-msg git-check-msg--${tunnelStatus.status}`}>
                   {tunnelStatus.status === 'checking' && <span className="git-check-msg__icon">&#8987;</span>}
@@ -494,13 +537,24 @@ function OnboardingPage({ onComplete }) {
 
         {error && <div className="onboarding-page__error">{error}</div>}
 
-        <button
-          onClick={submit}
-          disabled={submitting || !projects.every((p, i) => gitStatus[i]?.status === 'ok')}
-          className={`onboarding-page__submit${submitting || !projects.every((p, i) => gitStatus[i]?.status === 'ok') ? ' onboarding-page__submit--submitting' : ''}`}
-        >
-          {submitting ? 'Starting projects…' : 'Launch intern1'}
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="onboarding-page__submit"
+              style={{ background: '#2e2e2e', color: '#e0e0e0' }}
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={submit}
+            disabled={submitting || !projects.every((p, i) => gitStatus[i]?.status === 'ok')}
+            className={`onboarding-page__submit${submitting || !projects.every((p, i) => gitStatus[i]?.status === 'ok') ? ' onboarding-page__submit--submitting' : ''}`}
+          >
+            {submitting ? 'Starting projects…' : initialData ? 'Save & Restart' : 'Launch intern1'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -687,6 +741,36 @@ export default function App() {
   const [isPro, setIsPro] = useState(false)
   const [onboarding, setOnboarding] = useState(null) // null=unknown, true=show, false=skip
   const [yepKey, setYepKey] = useState(0)
+  const [settingsData, setSettingsData] = useState(null) // null=not showing, object=showing with pre-populated data
+
+  const checkOnboarding = useCallback(() => {
+    const attempt = () =>
+      fetch('/api/auth/config-check', { credentials: 'include' })
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
+        .then(data => {
+          if (data.hasProjects && data.hasApiKey) {
+            setOnboarding(false)
+          } else if (data.hasProjects) {
+            fetch('/api/auth/config-data', { credentials: 'include' })
+              .then(r => r.json())
+              .then(configData => setOnboarding(configData))
+              .catch(() => setOnboarding(true))
+          } else {
+            setOnboarding(true)
+          }
+        })
+        .catch(() => {
+          setTimeout(attempt, 1500)
+        })
+    attempt()
+  }, [])
+
+  const openSettings = useCallback(() => {
+    fetch('/api/auth/config-data', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => setSettingsData(data))
+      .catch(() => setSettingsData({ projects: [], tunnelMode: 'none', tunnelToken: '' }))
+  }, [])
 
   // Desktop: split percentage for left panel (0–100)
   const [splitPct, setSplitPct] = useState(50)
@@ -735,10 +819,7 @@ export default function App() {
       .then(r => r.json())
       .then(data => setIsPro(data.tier === 'pro'))
       .catch(() => {})
-    fetch('/api/auth/config-check', { credentials: 'include' })
-      .then(r => r.json())
-      .then(data => setOnboarding(!data.hasProjects))
-      .catch(() => setOnboarding(false))
+    checkOnboarding()
   }, [])
 
   const urlOverride = params.get('url')
@@ -750,12 +831,7 @@ export default function App() {
       .then(c => {
         setConfig(c)
         if (c.rightUrl) setRightUrl(prev => prev || c.rightUrl)
-        // Refresh YepAnywhere iframe when projects first appear in config
-        const count = (c.projects || []).length
-        if (count > 0 && prevProjectCount.current === 0) {
-          setYepKey(k => k + 1)
-        }
-        prevProjectCount.current = count
+        prevProjectCount.current = (c.projects || []).length
         return c
       })
       .catch(() => {
@@ -804,6 +880,8 @@ export default function App() {
         if (data.success) {
           setAuthed(true)
           if (data.defaultPassword) setDefaultPassword(true)
+          // Re-check onboarding state now that we're authenticated
+          checkOnboarding()
         } else {
           onFail()
         }
@@ -826,7 +904,22 @@ export default function App() {
   }
 
   if (onboarding) {
-    return <OnboardingPage onComplete={() => { setOnboarding(false); setYepKey(k => k + 1) }} />
+    return (
+      <OnboardingPage
+        initialData={typeof onboarding === 'object' ? onboarding : undefined}
+        onComplete={() => { setOnboarding(false); setYepKey(k => k + 1) }}
+      />
+    )
+  }
+
+  if (settingsData) {
+    return (
+      <OnboardingPage
+        initialData={settingsData}
+        onCancel={() => setSettingsData(null)}
+        onComplete={() => { setSettingsData(null); setYepKey(k => k + 1) }}
+      />
+    )
   }
 
   if (isMobile) {
@@ -840,7 +933,7 @@ export default function App() {
             You are using the default password. Update APP_PASSWORD and restart the container.
           </div>
         )}
-        <MobileTabBar active={mobileActive} onChange={setMobileActive} />
+        <MobileTabBar active={mobileActive} onChange={tab => { if (tab === 'settings') openSettings(); else setMobileActive(tab) }} />
         <div className="mobile-panel-container">
           <iframe
             key={yepKey}
@@ -886,7 +979,7 @@ export default function App() {
             title="YepAnywhere"
           />
         )}
-        <DesktopDivider splitPct={splitPct} onSnap={setSplitPct} onDragStart={onDragStart} logsMode={logsMode} onLogsToggle={() => { setLogsMode(l => !l); setShellMode(false) }} shellMode={shellMode} onShellToggle={() => { setShellMode(s => !s); setLogsMode(false) }} onShowApp={() => { setLogsMode(false); setShellMode(false) }} appActive={!logsMode && !shellMode} />
+        <DesktopDivider splitPct={splitPct} onSnap={setSplitPct} onDragStart={onDragStart} logsMode={logsMode} onLogsToggle={() => { setLogsMode(l => !l); setShellMode(false) }} shellMode={shellMode} onShellToggle={() => { setShellMode(s => !s); setLogsMode(false) }} onShowApp={() => { setLogsMode(false); setShellMode(false) }} appActive={!logsMode && !shellMode} onSettings={openSettings} />
         {splitPct < 100 && (
           <div className="app-right-pane" style={{ width: `${100 - splitPct}%` }}>
             {logsMode

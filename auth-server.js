@@ -177,7 +177,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const projects = JSON.parse(fs.readFileSync('/config/projects.json', 'utf8'));
+      const projects = fs.existsSync('/config/projects.json')
+        ? JSON.parse(fs.readFileSync('/config/projects.json', 'utf8'))
+        : [];
       const result = projects.map(p => {
         const dir = `/code/${p.name}`;
         if (!fs.existsSync(dir)) return { name: p.name, error: 'not cloned yet' };
@@ -475,6 +477,19 @@ const server = http.createServer(async (req, res) => {
         testReq.write(data);
         testReq.end();
       });
+      // If valid, set the key and start YepAnywhere immediately
+      if (testResult.ok && !process.env.ANTHROPIC_API_KEY) {
+        process.env.ANTHROPIC_API_KEY = apiKey;
+        console.log('  ✓ Set ANTHROPIC_API_KEY from validation');
+        try { execSync('pkill -f "yepanywhere" 2>/dev/null || true'); } catch {}
+        const yepProc = spawn('yepanywhere', ['--host', '0.0.0.0'], {
+          detached: true,
+          env: { ...process.env, ANTHROPIC_API_KEY: apiKey },
+          stdio: ['ignore', fs.openSync('/tmp/yepanywhere.log', 'a'), fs.openSync('/tmp/yepanywhere.log', 'a')],
+        });
+        yepProc.unref();
+        console.log('  ✓ Started YepAnywhere early (from API key validation)');
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(testResult));
     } catch (e) {
@@ -580,17 +595,57 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Config check — does projects.json have any entries?
+  // Config data — return current projects config + env contents for settings pre-population
+  if (req.method === 'GET' && req.url === '/config-data') {
+    try {
+      const projects = fs.existsSync('/config/projects.json')
+        ? JSON.parse(fs.readFileSync('/config/projects.json', 'utf8'))
+        : [];
+      // Enrich each project with env file contents and mask tokens
+      const enriched = projects.map(p => {
+        const proj = { ...p };
+        // Read env file contents if referenced
+        if (p.env) {
+          const envPath = `/config/envs/${p.env}`;
+          try {
+            proj.env_content = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8').trim() : '';
+          } catch { proj.env_content = ''; }
+        }
+        return proj;
+      });
+      // Read persisted tunnel config
+      let tunnelMode = 'none';
+      let tunnelToken = '';
+      try {
+        if (fs.existsSync('/config/tunnel.json')) {
+          const tc = JSON.parse(fs.readFileSync('/config/tunnel.json', 'utf8'));
+          tunnelMode = tc.mode || 'none';
+          tunnelToken = tc.token || '';
+        }
+      } catch {}
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ projects: enriched, tunnelMode, tunnelToken }));
+    } catch (e) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ projects: [], tunnelMode: 'none', tunnelToken: '' }));
+    }
+    return;
+  }
+
+  // Config check — does projects.json have any entries? Is the API key set?
   if (req.method === 'GET' && req.url === '/config-check') {
     try {
       const projects = fs.existsSync('/config/projects.json')
         ? JSON.parse(fs.readFileSync('/config/projects.json', 'utf8'))
         : [];
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ hasProjects: Array.isArray(projects) && projects.length > 0 }));
+      res.end(JSON.stringify({
+        hasProjects: Array.isArray(projects) && projects.length > 0,
+        hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+      }));
     } catch (e) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ hasProjects: false }));
+      res.end(JSON.stringify({ hasProjects: false, hasApiKey: !!process.env.ANTHROPIC_API_KEY }));
     }
     return;
   }
@@ -605,12 +660,13 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // Set API key if provided and not already set
-      if (apiKey && !process.env.ANTHROPIC_API_KEY) {
+      // Set or update API key and (re)start YepAnywhere
+      if (apiKey && apiKey !== process.env.ANTHROPIC_API_KEY) {
+        const isChange = !!process.env.ANTHROPIC_API_KEY;
         process.env.ANTHROPIC_API_KEY = apiKey;
-        console.log('  ✓ Set ANTHROPIC_API_KEY from onboarding');
+        console.log(isChange ? '  ✓ Updated ANTHROPIC_API_KEY' : '  ✓ Set ANTHROPIC_API_KEY from onboarding');
 
-        // Start (or restart) YepAnywhere with the API key
+        // Kill existing YepAnywhere and restart with new key
         try {
           execSync('pkill -f "yepanywhere" 2>/dev/null || true');
         } catch {}
@@ -620,7 +676,7 @@ const server = http.createServer(async (req, res) => {
           stdio: ['ignore', fs.openSync('/tmp/yepanywhere.log', 'a'), fs.openSync('/tmp/yepanywhere.log', 'a')],
         });
         yepProc.unref();
-        console.log('  ✓ Started YepAnywhere with API key');
+        console.log('  ✓ Started YepAnywhere with' + (isChange ? ' new' : '') + ' API key');
 
         // Wait for YepAnywhere to come back up
         for (let i = 0; i < 20; i++) {
@@ -636,6 +692,14 @@ const server = http.createServer(async (req, res) => {
             if (check === 200 || check === 304) break;
           } catch {}
         }
+      }
+
+      // Resolve tunnel token from saved config if user chose to keep existing
+      if (tunnel && tunnel.mode === 'named' && tunnel.keepExisting && !tunnel.token) {
+        try {
+          const saved = JSON.parse(fs.readFileSync('/config/tunnel.json', 'utf8'));
+          if (saved.token) tunnel.token = saved.token;
+        } catch {}
       }
 
       // Start tunnel if requested
@@ -699,6 +763,13 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      // Persist tunnel config so settings can re-populate it
+      try {
+        const tunnelConfig = { mode: tunnel?.mode || 'none' };
+        if (tunnel?.mode === 'named' && tunnel.token) tunnelConfig.token = tunnel.token;
+        fs.writeFileSync('/config/tunnel.json', JSON.stringify(tunnelConfig));
+      } catch {}
+
       // Validate required fields
       for (const p of projects) {
         if (!p.name || !p.repo || !p.port) {
@@ -707,6 +778,90 @@ const server = http.createServer(async (req, res) => {
           return;
         }
       }
+
+      // --- Teardown old projects that were removed or changed ---
+      let oldProjects = [];
+      try {
+        if (fs.existsSync('/config/projects.json')) {
+          oldProjects = JSON.parse(fs.readFileSync('/config/projects.json', 'utf8'));
+        }
+      } catch {}
+
+      // Build a lookup of new projects by name for comparison
+      const newByName = {};
+      for (const p of projects) {
+        newByName[p.name] = p;
+      }
+
+      // Determine which old projects need teardown:
+      // - removed entirely (name no longer present)
+      // - changed (same name but different repo or branch)
+      const toTeardown = [];
+      const unchanged = new Set();
+      for (const old of oldProjects) {
+        const replacement = newByName[old.name];
+        if (!replacement) {
+          // Project was removed
+          toTeardown.push(old);
+        } else if (replacement.repo !== old.repo || (replacement.ai_branch_name || '') !== (old.ai_branch_name || '')) {
+          // Project repo or branch changed — tear down and re-setup
+          toTeardown.push(old);
+        } else {
+          // Project unchanged — skip setup
+          unchanged.add(old.name);
+        }
+      }
+
+      // Tear down each stale project
+      for (const old of toTeardown) {
+        console.log(`  Tearing down old project: ${old.name} (port ${old.port})`);
+        // Kill process on the old port
+        try { execSync(`fuser -k ${old.port}/tcp 2>/dev/null || true`); } catch {}
+        // Remove project directory
+        try { execSync(`rm -rf /code/${old.name}`); } catch {}
+        // Remove log file
+        try { fs.unlinkSync(`/tmp/logs/${old.name}.log`); } catch {}
+        // Remove env file
+        if (old.env) {
+          try { fs.unlinkSync(`/config/envs/${old.env}`); } catch {}
+        }
+        // Remove from projects_info.json
+        try {
+          const info = JSON.parse(fs.readFileSync('/tmp/projects_info.json', 'utf8'));
+          const filtered = info.filter(p => p.name !== old.name);
+          fs.writeFileSync('/tmp/projects_info.json', JSON.stringify(filtered));
+        } catch {}
+        console.log(`  ✓ Torn down ${old.name}`);
+      }
+
+      // Rebuild nginx_projects.conf from scratch (only unchanged projects kept)
+      if (toTeardown.length > 0) {
+        // Rewrite nginx config with only the unchanged projects
+        let nginxConf = '';
+        for (const old of oldProjects) {
+          if (unchanged.has(old.name)) {
+            const proxyPass = old.iframe ? `http://localhost:${old.port}` : `http://localhost:${old.port}/`;
+            nginxConf += `location ^~ /code/${old.name}/ {\n` +
+              `    proxy_pass ${proxyPass};\n` +
+              `    proxy_http_version 1.1;\n` +
+              `    proxy_set_header Host "localhost:${old.port}";\n` +
+              `    proxy_set_header Accept-Encoding "";\n` +
+              `    proxy_set_header Upgrade $http_upgrade;\n` +
+              `    proxy_set_header Connection "upgrade";\n` +
+              `    proxy_hide_header Content-Security-Policy;\n` +
+              `    proxy_hide_header X-Frame-Options;\n` +
+              `    sub_filter '</head>' '<script>history.replaceState({},document.title,"/")</script></head>';\n` +
+              `    sub_filter_once on;\n` +
+              `}\n`;
+          }
+        }
+        fs.writeFileSync('/tmp/nginx_projects.conf', nginxConf);
+        try { execSync('nginx -c /app/nginx.conf -s reload'); } catch {}
+      }
+
+      // Filter to only projects that need setup (new or changed)
+      const projectsToSetup = projects.filter(p => !unchanged.has(p.name));
+      console.log(`  ${unchanged.size} project(s) unchanged, ${projectsToSetup.length} to set up, ${toTeardown.length} torn down`);
 
       // Write env files and strip env_content from the stored config
       fs.mkdirSync('/config/envs', { recursive: true });
@@ -725,17 +880,23 @@ const server = http.createServer(async (req, res) => {
       fs.writeFileSync('/config/projects.json', JSON.stringify(cleanProjects, null, 2));
       console.log(`  ✓ Wrote ${cleanProjects.length} project(s) to /config/projects.json`);
 
-      // Run setup-project.sh for each project sequentially to preserve order.
+      // Build clean list for the orchestrator (only projects needing setup)
+      const cleanToSetup = cleanProjects.filter(p => !unchanged.has(p.name));
+
+      // Run setup-project.sh for each new/changed project sequentially.
       // We write a small Node orchestrator and spawn it once — this avoids race
       // conditions on projects_info.json and guarantees project 1 starts before project 2.
       fs.mkdirSync('/tmp/logs', { recursive: true });
 
       const orchestrator = `
 const { spawnSync } = require('child_process');
-const projects = ${JSON.stringify(cleanProjects)};
+const http = require('http');
 const fs = require('fs');
+const projectsToSetup = ${JSON.stringify(cleanToSetup)};
+const allProjects = ${JSON.stringify(cleanProjects)};
 
-for (const p of projects) {
+// Set up new/changed projects
+for (const p of projectsToSetup) {
   const logFd = fs.openSync('/tmp/logs/' + p.name + '.log', 'a');
   const result = spawnSync('/usr/local/bin/setup-project.sh', [], {
     env: {
@@ -756,17 +917,56 @@ for (const p of projects) {
     fs.appendFileSync('/tmp/logs/' + p.name + '.log', 'ERROR: setup-project.sh exited with code ' + result.status + '\\n');
   }
 }
-`;
-      const orchestratorPath = '/tmp/setup-orchestrator.js';
-      fs.writeFileSync(orchestratorPath, orchestrator);
 
-      const orchOut = fs.openSync('/tmp/logs/setup-orchestrator.log', 'a');
-      const child = spawn('node', [orchestratorPath], {
-        detached: true,
-        stdio: ['ignore', orchOut, orchOut],
+// Register ALL projects with YepAnywhere (including unchanged ones that may have
+// failed registration earlier, e.g. if YepAnywhere wasn't running at container start)
+const headers = {
+  'Content-Type': 'application/json',
+  'Origin': 'http://localhost:3400',
+  'Referer': 'http://localhost:3400/',
+  'X-Yep-Anywhere': 'true'
+};
+
+function post(path, body) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
+    const req = http.request({ hostname:'localhost', port:3400, path, method:'POST',
+      headers:{...headers,'Content-Length':Buffer.byteLength(data)} }, res => {
+      let d=''; res.on('data',c=>d+=c); res.on('end',()=>resolve(d));
+    });
+    req.on('error', reject);
+    req.write(data); req.end();
+  });
+}
+
+(async () => {
+  for (const p of allProjects) {
+    const projectId = Buffer.from('/code/' + p.name).toString('base64').replace(/=+$/, '');
+    try {
+      await post('/api/projects', { path: '/code/' + p.name });
+      console.log('Registered ' + p.name + ' with YepAnywhere');
+      await post('/api/projects/' + projectId + '/sessions', {
+        message: 'You are working on the ' + p.name + ' project at /code/' + p.name + '. Use the CLAUDE.md file for context.'
       });
-      child.unref();
-      console.log(`  ↗ Spawned sequential setup orchestrator for ${cleanProjects.length} project(s)`);
+      console.log('Started session for ' + p.name);
+    } catch (e) {
+      console.error('YepAnywhere registration error for ' + p.name + ':', e.message);
+    }
+  }
+})();
+`;
+      if (cleanToSetup.length > 0 || unchanged.size > 0) {
+        const orchestratorPath = '/tmp/setup-orchestrator.js';
+        fs.writeFileSync(orchestratorPath, orchestrator);
+
+        const orchOut = fs.openSync('/tmp/logs/setup-orchestrator.log', 'a');
+        const child = spawn('node', [orchestratorPath], {
+          detached: true,
+          stdio: ['ignore', orchOut, orchOut],
+        });
+        child.unref();
+        console.log(`  ↗ Spawned setup orchestrator for ${cleanToSetup.length} project(s)`);
+      }
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
