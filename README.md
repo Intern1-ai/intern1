@@ -10,7 +10,7 @@ AI Editor on the Left, Live Code Preview on the Right.
 ## Quick Start
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... APP_PASSWORD=changeme docker compose up -d --build
+APP_PASSWORD=changeme docker compose up -d --build
 ```
 
 Open **http://localhost:3500**, log in, and the onboarding page walks you through the rest:
