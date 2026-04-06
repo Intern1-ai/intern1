@@ -386,8 +386,8 @@ const server = http.createServer(async (req, res) => {
       let checkUrl = repo;
       if (git_token && checkUrl.startsWith('https://')) {
         const u = new URL(checkUrl);
-        u.username = git_token;
-        u.password = 'x-oauth-basic';
+        u.username = 'oauth2';
+        u.password = git_token;
         checkUrl = u.toString();
       }
       const result = spawnSync('git', ['ls-remote', '--exit-code', checkUrl], {
